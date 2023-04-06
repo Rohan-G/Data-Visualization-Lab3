@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html>
+
+    <script src="https://code.jquery.com/jquery-3.6.4.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+<body>
+
+    <u><h1 align="center">Semester Calendar</h1></u>
+    <!-- svg tag is used here -->
+
+    <svg width="1000" height="700" style="position:absolute; top: 10vh; left: 20vw">
+
+    </svg>
+
+    <script src="https://unpkg.com/@popperjs/core@2/dist/umd/popper.min.js"></script>
+    <script src="https://unpkg.com/tippy.js@6/dist/tippy-bundle.umd.js"></script>
+    <script>
+
+        function min(a,b){
+            if(a<b){
+                return a;
+            }
+            else{
+                return b;
+            }
+        }
+
+        var svg = d3.select("svg");
+
+        var margin = 200;
+        var width = svg.attr("width") - margin;
+        var height = svg.attr("height") - margin;
+        var xScale = d3.scaleBand().range([0,width]).padding(0.4);
+        var yScale = d3.scaleLinear().range([height,0]);
+
+        array = [];
+        
+        var num=0;
+
+        d3.csv("https://raw.githubusercontent.com/Rohan-G/Data-Visualization-Lab3/main/Q3Data.csv",function(data){
+            var k = data.Date.split("-");
+            var newDate = [];
+            newDate.push(Number(k[0]));
+            newDate.push(Number(k[1]));
+            newDate.push(Number(k[2]));
+            data.Date = newDate;
+            data.index = num++;
+            array.push(data);
+        }).then(
+            ()=>{
+                var months = new Map();
+                months['Jan'] = 0;
+                months['Feb'] = months['Jan']+31;
+                months['Mar'] = months['Feb']+28;
+                months['Apr'] = months['Mar']+31;
+                months['May'] = months['Apr']+30;
+                months['Jun'] = months['May']+31;
+                // console.log(months['Feb']);
+                
+                var levelSize = 12;
+                var levelHeight = 30;
+                var margin = 5;
+                var monthSize = 115;
+                
+                var monthArr = [['Jan',0,31], ['Feb',1,28], ['Mar',2,31], ['Apr',3,30], ['May',4,31], ['Jun',5,30]];
+
+                var orgs = new Map();
+                orgs['Institute'] = ["rgb(110,0,110)", "rgb(60,0,60)"];
+                orgs['Student Body'] = ["rgb(0,0,150)", "rgb(0,0,100)"];
+
+                var types = new Map();
+                types['Holiday'] = ["rgb(250,250,0)","rgb(200,200,0)"]
+                types['Festival'] = ["rgb(250,150,0)","rgb(200,100,0)"]
+                types['Academic'] = ["rgb(150,150,150)","rgb(100,100,100)"]
+                types['Evaluation'] = ["rgb(250,0,0)","rgb(150,0,0)"]
+                types['Event'] = ["rgb(250,0,150)","rgb(200,0,100)"]
+
+                var currX = 50;
+                var initY = 2*margin;
+
+                var curr = 1;
+
+                for(var i=0;i<monthArr.length;i++){
+                    for(var j=0; j<3;j++){
+                        for(var k=0; k<min(levelSize, monthArr[i][2] - j*levelSize); k++){
+                            let ind = curr++;
+                            let month = i+1;
+                            let date = j*levelSize+k+1
+                            svg.append("rect")
+                            .attr("id","r"+ind)
+                            .attr('x',currX + 100 + k * (margin + levelHeight))
+                            .attr('y',initY + i*monthSize + j * (margin + levelHeight))
+                            .attr('height',levelHeight)
+                            .attr('width',levelHeight)
+                            .attr("fill","rgb(0, 100, 0)")
+                            .on("mouseover",(event,d)=>{
+                                d3.select("#r"+ind).attr("fill","rgb(0,50,0)")
+                                let cont = "Date: " + "2023-";
+                                if(month<10){
+                                    cont += "0";
+                                }
+                                cont += month + "-";
+                                if(date<10){
+                                    cont += "0";
+                                }
+                                cont += date + "<br>Regular Day"
+                                tippy("#r"+ind,{
+                                    content: cont,
+                                    allowHTML: true
+                                });
+                            })
+                            .on("mouseout",(event,d)=>{
+                                d3.select("#r"+ind).attr("fill","rgb(0,100,0)")
+                            })
+                        }
+                    }
+                }
+
+                svg.selectAll(".monthLabels")
+                .data(monthArr)
+                .enter().append('text')
+                .attr('x',currX)
+                .attr('y',(d)=>{return initY + 57 + monthSize*d[1] - 2*margin})
+                .attr("style","font-weight: bold; font-size: 1.5vw")
+                .style("fill","rgb(0,250,0)")
+                .text((d)=>{return d[0]})
+
+                // console.log(array)
+
+                var points = "" + (currX+100) + "," + (initY+4*monthSize) + " " + (currX + 100 + levelHeight) + "," + (initY + 4*monthSize) + " " + (currX + 100) + "," + (initY + 4*monthSize + levelHeight);
+
+                svg.append("polygon")
+                .attr("id","tr1")
+                .attr("points",points)
+                .attr("fill","red")
+
+                svg.selectAll(".eventRects")
+                .data(array)
+                .enter().each((d)=>{svg.select("#r"+(months[monthArr[d.Date[1]-1][0]]+d.Date[2])).remove()})
+
+                svg.selectAll(".eventRects")
+                .data(array)
+                .enter().append("polygon")
+                .attr("class",(d)=>{return "tr"+d.index})
+                .attr("id",(d)=>{return "u"+d.index})
+                .attr("points",(d)=>{ return "" + (currX + 100 + (d.Date[2]-1)%levelSize*(margin+levelHeight)) + "," + (initY + (d.Date[1]-1)*monthSize + ((Math.floor((d.Date[2]-1)/levelSize))*(levelHeight+margin))) + " " + (currX + 100 + levelHeight + (d.Date[2]-1)%levelSize*(margin+levelHeight)) + "," + (initY + (d.Date[1]-1)*monthSize + (Math.floor((d.Date[2]-1)/levelSize)*(levelHeight+margin))) + " " + (currX + 100 + (d.Date[2]-1)%levelSize*(margin+levelHeight)) + "," + (initY + (d.Date[1]-1)*monthSize + levelHeight + (Math.floor((d.Date[2]-1)/levelSize)*(levelHeight+margin)))})
+                .attr("fill",(d)=>{return types[d.Type][0]})
+                .on("mouseover",(event,d)=>{
+                    let cont = "Date: " + "2023-";
+                    if(d.Date[1]<10){
+                        cont += "0";
+                    }
+                    cont += d.Date[1] + "-";
+                    if(d.Date[2]<10){
+                        cont += "0";
+                    }
+                    cont += d.Date[2] + "<br>Event: " + d.Name + "<br>Batch: " + d.Batch + "<br>Type: " + d.Type + "<br>Organizer: " + d.Organizer;
+                    d3.select(event.target).attr("fill",types[d.Type][1])
+                    d3.select("#l"+d.index).attr("fill",orgs[d.Organizer][1])
+                    tippy(".tr"+d.index,{
+                        content: cont,
+                        allowHTML: true
+                    })
+                })
+                .on("mouseout",(event,d)=>{
+                    d3.select(event.target).attr("fill",types[d.Type][0])
+                    d3.select("#l"+d.index).attr("fill",orgs[d.Organizer][0])
+                })
+
+                svg.selectAll(".eventRects")
+                .data(array)
+                .enter().append("polygon")
+                .attr("class",(d)=>{return "tr"+d.index})
+                .attr("id",(d)=>{return "l"+d.index})
+                .attr("points",(d)=>{ return "" + (currX + 100 + levelHeight + (d.Date[2]-1)%levelSize*(margin+levelHeight)) + "," + (initY + levelHeight + (d.Date[1]-1)*monthSize + ((Math.floor((d.Date[2]-1)/levelSize))*(levelHeight+margin))) + " " + (currX + 100 + levelHeight + (d.Date[2]-1)%levelSize*(margin+levelHeight)) + "," + (initY + (d.Date[1]-1)*monthSize + (Math.floor((d.Date[2]-1)/levelSize)*(levelHeight+margin))) + " " + (currX + 100 + (d.Date[2]-1)%levelSize*(margin+levelHeight)) + "," + (initY + (d.Date[1]-1)*monthSize + levelHeight + (Math.floor((d.Date[2]-1)/levelSize)*(levelHeight+margin)))})
+                .attr("fill",(d)=>{return orgs[d.Organizer][0]})
+                .on("mouseover",(event,d)=>{
+                    let cont = "Date: " + "2023-";
+                    if(d.Date[1]<10){
+                        cont += "0";
+                    }
+                    cont += d.Date[1] + "-";
+                    if(d.Date[2]<10){
+                        cont += "0";
+                    }
+                    cont += d.Date[2] + "<br>Event: " + d.Name + "<br>Batch: " + d.Batch + "<br>Type: " + d.Type + "<br>Organizer: " + d.Organizer;
+                    d3.select(event.target).attr("fill",orgs[d.Organizer][1])
+                    d3.select("#u"+d.index).attr("fill",types[d.Type][1])
+                    tippy(".tr"+d.index,{
+                        content: cont,
+                        allowHTML: true
+                    })
+                })
+                .on("mouseout",(event,d)=>{
+                    d3.select(event.target).attr("fill",orgs[d.Organizer][0])
+                    d3.select("#u"+d.index).attr("fill",types[d.Type][0])
+                })
+
+                svg.append('rect')
+                .attr('x',640)
+                .attr('y',10)
+                .attr('height',400)
+                .attr('width',300)
+                .attr("style","stroke:black")
+                .attr("fill","white")
+
+                svg.append('text')
+                .attr('x',760)
+                .attr('y',45)
+                .text("Legend")
+                .attr("style","font-weight: bold; font-size: 1.25vw")
+
+                svg.append('text')
+                .attr('x',650)
+                .attr('y',70)
+                .text("Hover over the symbol to see what it depicts")
+
+                svg.append('text')
+                .attr('x',750)
+                .attr('y',110)
+                .text("Regular Day")
+                .attr("style","text-decoration: underline; font-size:1.15vw")
+
+                svg.append('rect')
+                .attr('x',770)
+                .attr('y',120)
+                .attr("id","rLeg")
+                .attr('width', levelHeight)
+                .attr('height', levelHeight)
+                .attr("fill","rgb(0,100,0)")
+                .on("mouseover",(event,d)=>{
+                    d3.selectAll("#rLeg").attr("fill","rgb(0,50,0)")
+                    tippy("#rLeg",{
+                        content:"Regular Day"
+                    })
+                })
+                .on("mouseout",(event,d)=>{
+                    d3.selectAll("#rLeg").attr("fill","rgb(0,100,0)")
+                })
+
+                svg.append('text')
+                .attr('x',730)
+                .attr('y',190)
+                .text("Irregularity Type")
+                .attr("style","text-decoration: underline; font-size:1.15vw")
+
+                svg.append("polygon")
+                .attr("id","acad")
+                .attr("points",""+720+","+200+" " + (720+levelHeight)+","+200+" "+720+","+(200+levelHeight))
+                .attr("fill",types['Academic'][0])
+                .on("mouseover",(event,d)=>{
+                    d3.selectAll("#acad").attr("fill",types['Academic'][1]);
+                    tippy("#acad",{
+                        content:"Academic Office Deadline"
+                    })
+                })
+                .on("mouseout",(event,d)=>{
+                    d3.selectAll("#acad").attr("fill",types['Academic'][0])
+                })
+
+                svg.append("polygon")
+                .attr("id","fest")
+                .attr("points",""+780+","+200+" " + (780+levelHeight)+","+200+" "+780+","+(200+levelHeight))
+                .attr("fill",types['Festival'][0])
+                .on("mouseover",(event,d)=>{
+                    d3.selectAll("#fest").attr("fill",types['Festival'][1]);
+                    tippy("#fest",{
+                        content:"A Festival"
+                    })
+                })
+                .on("mouseout",(event,d)=>{
+                    d3.selectAll("#fest").attr("fill",types['Festival'][0])
+                })
+
+                svg.append("polygon")
+                .attr("id","eve")
+                .attr("points",""+840+","+200+" " + (840+levelHeight)+","+200+" "+840+","+(200+levelHeight))
+                .attr("fill",types['Event'][0])
+                .on("mouseover",(event,d)=>{
+                    d3.selectAll("#eve").attr("fill",types['Event'][1]);
+                    tippy("#eve",{
+                        content:"College Event"
+                    })
+                })
+                .on("mouseout",(event,d)=>{
+                    d3.selectAll("#eve").attr("fill",types['Event'][0])
+                })
+
+                svg.append("polygon")
+                .attr("id","eval")
+                .attr("points",""+740+","+255+" " + (740+levelHeight)+","+255+" "+740+","+(255+levelHeight))
+                .attr("fill",types['Evaluation'][0])
+                .on("mouseover",(event,d)=>{
+                    d3.selectAll("#eval").attr("fill",types['Evaluation'][1]);
+                    tippy("#eval",{
+                        content:"Evaluations"
+                    })
+                })
+                .on("mouseout",(event,d)=>{
+                    d3.selectAll("#eval").attr("fill",types['Evaluation'][0])
+                })
+
+                svg.append("polygon")
+                .attr("id","hol")
+                .attr("points",""+800+","+255+" " + (800+levelHeight)+","+255+" "+800+","+(255+levelHeight))
+                .attr("fill",types['Holiday'][0])
+                .on("mouseover",(event,d)=>{
+                    d3.selectAll("#hol").attr("fill",types['Holiday'][1]);
+                    tippy("#hol",{
+                        content:"Holidays"
+                    })
+                })
+                .on("mouseout",(event,d)=>{
+                    d3.selectAll("#hol").attr("fill",types['Holiday'][0])
+                })
+
+                svg.append('text')
+                .attr('x',730)
+                .attr('y',330)
+                .text("Event Organizer")
+                .attr("style","text-decoration: underline; font-size:1.15vw")
+
+                svg.append("polygon")
+                .attr("id","inst")
+                .attr("points",""+(740+levelHeight)+","+(340+levelHeight)+" " + (740+levelHeight)+","+340+" "+740+","+(340+levelHeight))
+                .attr("fill",orgs['Institute'][0])
+                .on("mouseover",(event,d)=>{
+                    d3.selectAll("#inst").attr("fill",orgs['Institute'][1]);
+                    tippy("#inst",{
+                        content:"The Institute is in charge of hosting events"
+                    })
+                })
+                .on("mouseout",(event,d)=>{
+                    d3.selectAll("#inst").attr("fill",orgs['Institute'][0])
+                })
+
+                svg.append("polygon")
+                .attr("id","sb")
+                .attr("points",""+(800+levelHeight)+","+(340+levelHeight)+ " " + (800+levelHeight) + ","+340+" "+800+","+(340+levelHeight))
+                .attr("fill",orgs['Student Body'][0])
+                .on("mouseover",(event,d)=>{
+                    d3.selectAll("#sb").attr("fill",orgs['Student Body'][1]);
+                    tippy("#sb",{
+                        content:"A Student Body is in charge of hosting events"
+                    })
+                })
+                .on("mouseout",(event,d)=>{
+                    d3.selectAll("#sb").attr("fill",orgs['Student Body'][0])
+                })
+
+                });
+
+    </script>
+
+</body>
+
+ 
+
+</html>
+<!-- 
+xScale = scaleBand()
+yScale = scaleLinear()
+-->
